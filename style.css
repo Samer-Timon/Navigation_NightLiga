@@ -1,0 +1,150 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #000;
+  color: #eee;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Верхняя панель */
+
+.top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slider-controls,
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.floor-label {
+  min-width: 80px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.nav-btn,
+.zoom-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #222;
+  color: #eee;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.nav-btn:active,
+.zoom-btn:active {
+  transform: scale(0.96);
+}
+
+.nav-btn:hover,
+.zoom-btn:hover {
+  background: #333;
+}
+
+.reset-btn {
+  font-size: 12px;
+  padding-inline: 8px;
+  opacity: 0.8;
+}
+
+.zoom-label {
+  font-size: 13px;
+  min-width: 48px;
+  text-align: center;
+}
+
+/* Карта */
+
+.map-wrapper {
+  flex: 1;
+  min-height: 0;
+  background: #000;
+}
+
+.map-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none; /* чтобы работали свои жесты */
+  background: #000;
+}
+
+.map-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.map-image {
+  display: block;
+  max-width: none; /* масштабируем сами */
+  height: auto;
+}
+
+/* Маркеры комнат */
+
+.room-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.room-marker.completed {
+  background: rgba(76, 175, 80, 0.9); /* зелёный */
+  border-color: rgba(76, 175, 80, 1);
+}
+
+.room-marker.current {
+  box-shadow: 0 0 8px rgba(255, 255, 0, 0.8);
+}
+
+/* Адаптив */
+
+@media (max-width: 480px) {
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .slider-controls,
+  .zoom-controls {
+    justify-content: center;
+  }
+}
