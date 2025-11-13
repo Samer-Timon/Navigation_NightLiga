@@ -3,52 +3,682 @@
 <head>
   <meta charset="UTF-8" />
   <title>Карта квеста</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <!-- Telegram WebApp SDK -->
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Telegram WebApp SDK (по желанию, для стилизации под тему Telegram) -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <div id="app">
-    <header class="top-bar">
-      <div class="slider-controls">
-        <button id="prevFloorBtn" class="nav-btn">←</button>
-        <span id="floorLabel" class="floor-label">3 этаж</span>
-        <button id="nextFloorBtn" class="nav-btn">→</button>
-      </div>
+  <style>
+    :root {
+      --bg-main: #050a08;
+      --bg-panel: #050f0b;
+      --accent: #00ff9c;
+      --accent-soft: rgba(0, 255, 156, 0.15);
+      --accent-strong: rgba(0, 255, 156, 0.8);
+      --line-soft: rgba(0, 255, 156, 0.2);
+      --text-main: #e4fff3;
+      --text-dim: #6dd9b3;
+      --danger: #ff4b4b;
+    }
 
-      <div class="zoom-controls">
-        <button id="zoomOutBtn" class="zoom-btn">−</button>
-        <span id="zoomLabel" class="zoom-label">100%</span>
-        <button id="zoomInBtn" class="zoom-btn">+</button>
-        <button id="resetViewBtn" class="zoom-btn reset-btn">Сброс</button>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Roboto", sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #092117 0, #020403 60%, #000 100%);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1200px;
+      margin: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: linear-gradient(
+          135deg,
+          rgba(0, 255, 156, 0.08),
+          transparent 55%,
+          rgba(0, 255, 156, 0.04)
+        ),
+        radial-gradient(circle at left, rgba(0, 255, 156, 0.13), transparent 60%);
+      border: 1px solid var(--line-soft);
+      backdrop-filter: blur(12px);
+    }
+
+    header h1 {
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    header .status {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    header .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .sidebar {
+      width: 210px;
+      max-width: 40%;
+      background: var(--bg-panel);
+      border-radius: 12px;
+      border: 1px solid var(--line-soft);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.7);
+    }
+
+    @media (max-width: 800px) {
+      main {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        max-width: 100%;
+        order: 2;
+      }
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .floor-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .floor-btn {
+      flex: 1 1 80px;
+      border-radius: 999px;
+      border: 1px solid var(--line-soft);
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      background: rgba(2, 10, 8, 0.9);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: 0.15s ease-out;
+    }
+
+    .floor-btn span.label {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    .floor-btn span.value {
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    .floor-btn.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0, 255, 156, 0.3);
+      background: radial-gradient(circle at top, rgba(0,255,156,0.24), #020806);
+    }
+
+    .floor-btn:hover {
+      border-color: var(--accent-strong);
+    }
+
+    .info-card {
+      border-radius: 10px;
+      border: 1px solid var(--line-soft);
+      padding: 8px;
+      background: radial-gradient(circle at center, rgba(0,255,156,0.06), transparent 70%);
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+    }
+
+    .info-main {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .info-secondary {
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px 10px;
+      font-size: 11px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 14px;
+      height: 9px;
+      border-radius: 2px;
+      border: 1px solid var(--accent);
+      box-shadow: 0 0 10px rgba(0,255,156,0.3);
+    }
+    .legend-dot.room-main { background: rgba(0,255,156,0.18); }
+    .legend-dot.corridor { background: rgba(0,255,156,0.05); }
+    .legend-dot.stairs { background: rgba(0,148,255,0.24); border-color: rgba(0,170,255,0.9); }
+    .legend-dot.toilet { background: rgba(255,255,255,0.02); border-color: rgba(0,255,209,0.8); }
+    .legend-dot.street { background: rgba(116,255,190,0.1); border-style: dashed; }
+
+    .map-container {
+      flex: 1;
+      min-height: 0;
+      background:
+        linear-gradient(90deg, rgba(0,255,156,0.06) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(0,255,156,0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+      border-radius: 12px;
+      border: 1px solid var(--accent-soft);
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(0,255,156,0.15),
+        0 0 30px rgba(0,0,0,0.85);
+    }
+
+    .map-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at top left, rgba(0,255,156,0.16), transparent 60%),
+        radial-gradient(circle at bottom right, rgba(0,255,156,0.12), transparent 60%);
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: 0.4;
+    }
+
+    svg#map {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: radial-gradient(circle at center, #02140d 0, #020704 50%, #010302 100%);
+    }
+
+    /* Внешний контур помещений */
+    .room {
+      fill: rgba(0, 255, 156, 0.14);
+      stroke: rgba(0, 255, 156, 0.65);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .room-corridor {
+      fill: rgba(0, 255, 156, 0.04);
+      stroke-dasharray: 2 3;
+    }
+
+    .room-street {
+      fill: rgba(116, 255, 190, 0.09);
+      stroke: rgba(116,255,190,0.8);
+      stroke-dasharray: 3 2;
+    }
+
+    .room-stairs {
+      fill: rgba(0, 179, 255, 0.22);
+      stroke: rgba(0, 179, 255, 0.9);
+    }
+
+    .room-toilet {
+      fill: rgba(255,255,255,0.03);
+      stroke: rgba(0, 255, 209, 0.8);
+      stroke-dasharray: 4 2;
+    }
+
+    .room-highlight {
+      stroke: var(--accent);
+      stroke-width: 2;
+      fill: rgba(0,255,156,0.26);
+      filter: drop-shadow(0 0 12px rgba(0,255,156,0.8));
+    }
+
+    .room:hover {
+      stroke-width: 2;
+      cursor: pointer;
+    }
+
+    /* Подписи */
+    .room-label {
+      fill: var(--accent);
+      font-size: 9px;
+      text-anchor: middle;
+      alignment-baseline: middle;
+      paint-order: stroke;
+      stroke: rgba(0,0,0,0.9);
+      stroke-width: 0.6px;
+    }
+
+    .room-label.small {
+      font-size: 7px;
+    }
+
+    .room-label.tiny {
+      font-size: 5px;
+    }
+
+    .scanline {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(
+        transparent 50%,
+        rgba(0,0,0,0.7) 50%
+      );
+      background-size: 100% 3px;
+      opacity: 0.3;
+      mix-blend-mode: soft-light;
+      animation: scan 8s linear infinite;
+    }
+
+    @keyframes scan {
+      0% { background-position-y: 0; }
+      100% { background-position-y: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Операция: Квест</h1>
+      <div class="status">
+        <span class="status-dot"></span>
+        <span>Система навигации активна</span>
       </div>
     </header>
 
-    <main class="map-wrapper">
-      <div id="mapViewport" class="map-viewport">
-        <!-- Контейнер, который масштабируем и двигаем -->
-        <div id="mapInner" class="map-inner">
-          <img
-            id="mapImage"
-            src="maps/3.jpg"
-            alt="Карта 3 этажа"
-            class="map-image"
-          />
-
-          <!-- Примеры "комнат", к которым можно привязать прогресс (hotspots) -->
-          <!-- Позиции и размеры подгонишь под свои карты -->
-          <div class="room-marker" data-floor="3" data-room-id="room_301" style="left: 20%; top: 30%;">301</div>
-          <div class="room-marker" data-floor="3" data-room-id="room_302" style="left: 50%; top: 50%;">302</div>
-
-          <div class="room-marker" data-floor="4" data-room-id="room_401" style="left: 30%; top: 40%;">401</div>
-          <div class="room-marker" data-floor="4" data-room-id="room_402" style="left: 60%; top: 60%;">402</div>
+    <main>
+      <!-- Левая панель -->
+      <aside class="sidebar">
+        <div>
+          <div class="sidebar-section-title">Этаж</div>
+          <div class="floor-buttons">
+            <button class="floor-btn active" data-floor="3">
+              <span class="label">Уровень</span>
+              <span class="value">3</span>
+            </button>
+            <button class="floor-btn" data-floor="4">
+              <span class="label">Уровень</span>
+              <span class="value">4</span>
+            </button>
+          </div>
         </div>
-      </div>
+
+        <div class="info-card" id="room-info">
+          <div class="info-label">Текущая зона</div>
+          <div class="info-main" id="room-name">—</div>
+          <div class="info-secondary" id="room-extra">
+            Нажми на помещение на карте, чтобы получить информацию.
+          </div>
+        </div>
+
+        <div>
+          <div class="sidebar-section-title">Условные обозначения</div>
+          <div class="legend">
+            <div class="legend-item">
+              <span class="legend-dot room-main"></span>
+              <span>Аудитории / комнаты</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot corridor"></span>
+              <span>Коридор</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot stairs"></span>
+              <span>Лестницы</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot toilet"></span>
+              <span>Туалеты / сервис</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot street"></span>
+              <span>Улица / двор</span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Правая область: карта -->
+      <section class="map-container">
+        <svg id="map" viewBox="0 0 700 520" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="map-overlay"></div>
+        <div class="scanline"></div>
+      </section>
     </main>
   </div>
 
-  <script src="map.js"></script>
+  <script>
+    // Попытка подстроиться под тему Telegram (не обязательно)
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.ready();
+      const theme = Telegram.WebApp.themeParams || {};
+      if (theme.bg_color) {
+        document.body.style.backgroundColor = "#" + theme.bg_color;
+      }
+    }
+
+    // ====== Вспомогательные функции геометрии ======
+
+    function polygonCentroid(points) {
+      // Стандартный центроид полигона
+      let area = 0, cx = 0, cy = 0;
+      const n = points.length;
+      for (let i = 0; i < n; i++) {
+        const [x1, y1] = points[i];
+        const [x2, y2] = points[(i + 1) % n];
+        const cross = x1 * y2 - x2 * y1;
+        area += cross;
+        cx += (x1 + x2) * cross;
+        cy += (y1 + y2) * cross;
+      }
+      area *= 0.5;
+      if (!area) {
+        // fallback: просто среднее
+        const sx = points.reduce((s, p) => s + p[0], 0);
+        const sy = points.reduce((s, p) => s + p[1], 0);
+        return { x: sx / points.length, y: sy / points.length };
+      }
+      cx /= (6 * area);
+      cy /= (6 * area);
+      return { x: cx, y: cy };
+    }
+
+    function pointInPolygon(point, polygon) {
+      // Даже если полигон не выпуклый — ок
+      const [px, py] = point;
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const [xi, yi] = polygon[i];
+        const [xj, yj] = polygon[j];
+        const intersect =
+          yi > py !== yj > py &&
+          px < ((xj - xi) * (py - yi)) / (yj - yi + 0.0000001) + xi;
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function boxesOverlap(a, b) {
+      return !(
+        a.x + a.width < b.x ||
+        b.x + b.width < a.x ||
+        a.y + a.height < b.y ||
+        b.y + b.height < a.y
+      );
+    }
+
+    function boundingBoxesOverlap(box, list) {
+      for (const b of list) {
+        if (boxesOverlap(box, b)) return true;
+      }
+      return false;
+    }
+
+    // ====== Преобразование room -> path ======
+
+    function roomToPath(room) {
+      const outer = room.outer;
+      let d = "";
+      if (outer && outer.length) {
+        d += `M ${outer[0][0]} ${outer[0][1]}`;
+        for (let i = 1; i < outer.length; i++) {
+          d += ` L ${outer[i][0]} ${outer[i][1]}`;
+        }
+        d += " Z";
+      }
+
+      if (room.holes && room.holes.length) {
+        for (const hole of room.holes) {
+          if (!hole.length) continue;
+          d += ` M ${hole[0][0]} ${hole[0][1]}`;
+          for (let i = 1; i < hole.length; i++) {
+            d += ` L ${hole[i][0]} ${hole[i][1]}`;
+          }
+          d += " Z";
+        }
+      }
+      return d;
+    }
+
+    function classifyRoom(room) {
+      const name = (room.name || "").toLowerCase();
+      if (!name) return "room";
+
+      if (name.includes("коридор")) return "room-corridor";
+      if (name.includes("улица")) return "room-street";
+      if (name.includes("лестница")) return "room-stairs";
+      if (name.includes("туалет")) return "room-toilet";
+
+      // по умолчанию — обычная комната
+      return "room";
+    }
+
+    // ====== Отрисовка этажа ======
+
+    const floorsData = {}; // сюда положим данные обоих этажей
+    let currentFloor = "3";
+    let highlightedRoomId = null;
+
+    const svg = document.getElementById("map");
+    const roomInfo = document.getElementById("room-info");
+    const roomNameEl = document.getElementById("room-name");
+    const roomExtraEl = document.getElementById("room-extra");
+
+    function renderFloor(floorKey) {
+      const data = floorsData[floorKey];
+      if (!data) return;
+
+      highlightedRoomId = null;
+      roomNameEl.textContent = "—";
+      roomExtraEl.textContent = "Нажми на помещение на карте, чтобы получить информацию.";
+
+      // Очистить SVG
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      const rooms = data.rooms || [];
+      const labelBoxes = [];
+
+      rooms.forEach((room) => {
+        const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const d = roomToPath(room);
+        pathEl.setAttribute("d", d);
+        pathEl.setAttribute("fill-rule", "evenodd");
+
+        const baseClass = "room";
+        const extraClass = classifyRoom(room);
+        pathEl.setAttribute("class", baseClass + " " + extraClass);
+        pathEl.dataset.roomId = room.id;
+
+        // Клик по комнате
+        pathEl.addEventListener("click", () => {
+          highlightRoom(room.id);
+          roomNameEl.textContent = room.name || `ID ${room.id}`;
+          roomExtraEl.textContent =
+            room.name
+              ? `Помещение №${room.id}. Используй для точки квеста.`
+              : `Техническая зона, ID ${room.id}.`;
+        });
+
+        svg.appendChild(pathEl);
+      });
+
+      // Подписи
+      rooms.forEach((room) => {
+        if (!room.name) return;
+
+        const centroid = polygonCentroid(room.outer);
+        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textEl.textContent = room.name;
+        textEl.setAttribute("class", "room-label");
+
+        // Попытки разместить текст без пересечения с уже существующими
+        const offsetPatterns = [
+          { dx: 0, dy: 0 },
+          { dx: 0, dy: -5 },
+          { dx: 0, dy: 5 },
+          { dx: -8, dy: 0 },
+          { dx: 8, dy: 0 },
+          { dx: -8, dy: -5 },
+          { dx: 8, dy: -5 },
+          { dx: -8, dy: 5 },
+          { dx: 8, dy: 5 }
+        ];
+
+        const fontSizeClasses = ["", "small", "tiny"];
+        let placed = false;
+
+        for (const fsClass of fontSizeClasses) {
+          if (fsClass) textEl.classList.add(fsClass);
+
+          for (const off of offsetPatterns) {
+            const x = centroid.x + off.dx;
+            const y = centroid.y + off.dy;
+            textEl.setAttribute("x", x);
+            textEl.setAttribute("y", y);
+            svg.appendChild(textEl);
+
+            const bbox = textEl.getBBox();
+            const boxCenter = [bbox.x + bbox.width / 2, bbox.y + bbox.height / 2];
+
+            const insidePolygon = pointInPolygon(boxCenter, room.outer);
+            const overlaps = boundingBoxesOverlap(bbox, labelBoxes);
+
+            if (insidePolygon && !overlaps) {
+              labelBoxes.push(bbox);
+              placed = true;
+              break;
+            } else {
+              svg.removeChild(textEl);
+            }
+          }
+
+          if (placed) break;
+          textEl.classList.remove(fsClass);
+        }
+
+        if (!placed) {
+          // если так и не поместили — просто не рисуем
+          try {
+            svg.removeChild(textEl);
+          } catch (e) {}
+        }
+      });
+    }
+
+    function highlightRoom(roomId) {
+      const paths = svg.querySelectorAll("path");
+      paths.forEach((p) => {
+        if (p.dataset.roomId == roomId) {
+          p.classList.add("room-highlight");
+        } else {
+          p.classList.remove("room-highlight");
+        }
+      });
+    }
+
+    // ====== Переключение этажей ======
+
+    function setFloor(floorKey) {
+      currentFloor = floorKey;
+
+      document
+        .querySelectorAll(".floor-btn")
+        .forEach((btn) => btn.classList.toggle("active", btn.dataset.floor === floorKey));
+
+      renderFloor(floorKey);
+    }
+
+    document.querySelectorAll(".floor-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const floor = btn.dataset.floor;
+        setFloor(floor);
+      });
+    });
+
+    // ====== Загрузка JSON файлов ======
+    // Поменяй имена файлов при необходимости.
+    Promise.all([
+      fetch("floor3.json").then((r) => r.json()),
+      fetch("floor4.json").then((r) => r.json()),
+    ])
+      .then(([floor3, floor4]) => {
+        // Ожидается структура { rooms: [...] }
+        floorsData["3"] = floor3;
+        floorsData["4"] = floor4;
+
+        setFloor("3");
+      })
+      .catch((err) => {
+        console.error("Ошибка загрузки этажей:", err);
+        roomNameEl.textContent = "Ошибка загрузки данных";
+        roomExtraEl.textContent = "Проверь путь к JSON-файлам этажей.";
+      });
+  </script>
 </body>
 </html>
